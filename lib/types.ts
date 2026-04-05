@@ -1,4 +1,4 @@
-export type LeadStatus = 'New' | 'Ready' | 'Contacted';
+export type LeadStatus = 'New' | 'Ready' | 'Contacted' | 'Qualified' | 'Proposal Sent' | 'Won' | 'Lost';
 
 export interface OutreachBundle {
   emailSubject: string;
@@ -40,5 +40,56 @@ export interface LeadSearchInput {
   niche: string;
   city: string;
   state: string;
+  purpose: string;
+}
+
+export interface Account {
+  id: string;
+  businessName: string;
+  website: string;
+  primaryContact: string;
+  email: string;
+  phone: string;
+  city: string;
+  state: string;
+  niche: string;
+  status: LeadStatus;
+  lastActivityType?: ActivityType;
+  lastActivityAt?: string;
+  nextFollowUpAt?: string;
   notes?: string;
+}
+
+export type ActivityType = 'Email' | 'Call' | 'LinkedIn' | 'Note' | 'Status Change' | 'Task';
+
+export interface ActivityRecord {
+  id: string;
+  accountId: string;
+  type: ActivityType;
+  summary: string;
+  outcome?: string;
+  timestamp: string;
+}
+
+export type TaskStatus = 'Open' | 'Done';
+export type TaskPriority = 'Low' | 'Medium' | 'High';
+
+export interface FollowUpTask {
+  id: string;
+  accountId: string;
+  title: string;
+  dueAt: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  createdAt: string;
+}
+
+export interface UserProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  companyName: string;
+  productService: string;
+  outreachGoal: string;
+  timezone: string;
 }

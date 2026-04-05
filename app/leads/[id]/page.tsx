@@ -4,10 +4,13 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { OutreachEditor } from '@/components/outreach-editor';
+import { SparklineLogo } from '@/components/sparkline-logo';
 import { exportLeadOutreach } from '@/lib/export';
 import { buildOutreach } from '@/lib/outreach-generator';
 import { loadLeadById, loadLeads, saveLeads } from '@/lib/storage';
-import { Lead } from '@/lib/types';
+import { Lead, LeadStatus } from '@/lib/types';
+
+const statusOptions: LeadStatus[] = ['New', 'Ready', 'Contacted', 'Qualified', 'Proposal Sent', 'Won', 'Lost'];
 
 function updateInStorage(updated: Lead): void {
   const all = loadLeads().map((lead) => lead.id === updated.id ? updated : lead);
@@ -17,11 +20,21 @@ function updateInStorage(updated: Lead): void {
 export default function LeadDetailPage() {
   const params = useParams<{ id: string }>();
   const [lead, setLead] = useState<Lead | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
     const found = loadLeadById(params.id);
     setLead(found);
+    setIsHydrated(true);
   }, [params.id]);
+
+  if (!isHydrated) {
+    return (
+      <main className="mx-auto min-h-screen max-w-5xl px-4 py-8">
+        <div className="card mt-6 p-10 text-center text-slate-500">Loading lead details...</div>
+      </main>
+    );
+  }
 
   if (!lead) {
     return (
@@ -47,6 +60,8 @@ export default function LeadDetailPage() {
   };
 
   const markContacted = () => {
+    if (lead.status === 'Contacted') return;
+
     const next = {
       ...lead,
       status: 'Contacted' as const,
@@ -55,14 +70,32 @@ export default function LeadDetailPage() {
     updateLead(next);
   };
 
+  const updateStatus = (nextStatus: LeadStatus) => {
+    if (nextStatus === lead.status) return;
+    updateLead({
+      ...lead,
+      status: nextStatus,
+      activity: [...lead.activity, { id: crypto.randomUUID(), label: `Status updated to ${nextStatus}`, timestamp: new Date().toISOString() }],
+    });
+  };
+
   return (
     <main className="mx-auto min-h-screen w-full max-w-6xl space-y-6 px-4 py-8 md:px-6">
+      <header className="flex items-center gap-3">
+        <SparklineLogo size={32} />
+        <p className="text-2xl font-bold tracking-tight">
+          <span className="brand-gradient-text">Sparkline</span>
+        </p>
+      </header>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href="/" className="btn-secondary">← Back to Dashboard</Link>
         <div className="flex gap-2">
           <button className="btn-secondary" onClick={() => exportLeadOutreach(lead, 'txt')}>Export TXT</button>
           <button className="btn-secondary" onClick={() => exportLeadOutreach(lead, 'json')}>Export JSON</button>
-          <button className="btn-primary" onClick={markContacted}>Mark Contacted</button>
+          <button className="btn-primary disabled:cursor-not-allowed disabled:opacity-60" disabled={lead.status === 'Contacted'} onClick={markContacted}>
+            {lead.status === 'Contacted' ? 'Already Contacted' : 'Mark Contacted'}
+          </button>
         </div>
       </div>
 
@@ -85,11 +118,24 @@ export default function LeadDetailPage() {
             <p><strong>Phone:</strong> {lead.phone}</p>
             <p><strong>Website:</strong> <a className="text-brand-600" href={lead.website} target="_blank" rel="noreferrer">{lead.website}</a></p>
             <p><strong>LinkedIn:</strong> <a className="text-brand-600" href={lead.linkedinUrl} target="_blank" rel="noreferrer">Profile</a></p>
+            <div className="flex flex-wrap gap-2 pt-2">
+              <a className="btn-secondary" href={`mailto:${lead.email}`}>Email Contact</a>
+              <a className="btn-secondary" href={`tel:${lead.phone}`}>Call Contact</a>
+              <a className="btn-secondary" href={lead.website} rel="noreferrer" target="_blank">Visit Website</a>
+            </div>
           </div>
           <div className="space-y-2 text-sm">
             <p><strong>Location:</strong> {lead.city}, {lead.state}</p>
             <p><strong>Niche:</strong> {lead.niche}</p>
             <p><strong>Personalization Hook:</strong> {lead.personalizationHook}</p>
+            <div className="pt-2">
+              <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Pipeline Stage</label>
+              <select className="field" onChange={(event) => updateStatus(event.target.value as LeadStatus)} value={lead.status}>
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
