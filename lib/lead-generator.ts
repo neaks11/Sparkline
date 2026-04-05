@@ -70,8 +70,8 @@ export function generateSampleLeads(input: LeadSearchInput): Lead[] {
       painPoints,
       personalizationHook: randomFrom(hooks),
       leadScore,
-      status: leadScore > 80 ? 'Ready' : 'New',
-      notes: input.notes ?? '',
+      status: leadScore > 90 ? 'Qualified' : leadScore > 80 ? 'Ready' : 'New',
+      notes: `Offer context: ${input.purpose}`,
       outreach: {
         emailSubject: '',
         emailBody: '',
@@ -82,7 +82,7 @@ export function generateSampleLeads(input: LeadSearchInput): Lead[] {
       activity: [{ id: crypto.randomUUID(), label: 'Lead generated', timestamp: new Date().toISOString() }],
     };
 
-    lead.outreach = buildOutreach(lead, input.notes);
+    lead.outreach = buildOutreach(lead, input.purpose);
     return lead;
   });
 }

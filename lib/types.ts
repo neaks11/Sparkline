@@ -1,4 +1,4 @@
-export type LeadStatus = 'New' | 'Ready' | 'Contacted';
+export type LeadStatus = 'New' | 'Ready' | 'Contacted' | 'Qualified' | 'Proposal Sent' | 'Won' | 'Lost';
 
 export interface OutreachBundle {
   emailSubject: string;
@@ -40,5 +40,5 @@ export interface LeadSearchInput {
   niche: string;
   city: string;
   state: string;
-  notes?: string;
+  purpose: string;
 }

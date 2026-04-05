@@ -15,7 +15,7 @@ export function buildOutreach(lead: Lead, userNotes?: string): OutreachBundle {
   const valueProp = pick(valueProps);
   const painPoint = lead.painPoints[0] ?? `converting more local ${lead.niche} demand`;
   const hook = lead.personalizationHook;
-  const noteLine = userNotes ? `I also had your note in mind: ${userNotes}. ` : '';
+  const noteLine = userNotes ? `Context for my outreach: ${userNotes}. ` : '';
 
   const emailSubject = `${lead.city} growth idea for ${lead.businessName}`;
   const emailBody = `Hi ${lead.contactName},\n\nI work with ${lead.niche} teams in ${lead.city} that want steadier pipeline without burning time on manual follow-up. I noticed ${hook.toLowerCase()}, and it stood out because shops like yours usually mention ${painPoint.toLowerCase()} as a bottleneck. ${noteLine}We typically help owners ${valueProp}.\n\nIf you are open to it, I can send a quick 3-point teardown focused on what to adjust first for ${lead.businessName}. No hard pitch—just practical ideas you can use either way.\n\nWould it be useful if I shared that this week?\n\nBest,\n[Your Name]`;

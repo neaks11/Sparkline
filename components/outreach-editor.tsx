@@ -13,13 +13,24 @@ type Tab = 'email' | 'voicemail' | 'linkedin';
 
 export function OutreachEditor({ lead, onUpdate, onRegenerate }: OutreachEditorProps) {
   const [tab, setTab] = useState<Tab>('email');
+  const [copyStatus, setCopyStatus] = useState<string>('');
 
-  const copy = async (value: string) => {
-    await navigator.clipboard.writeText(value);
+  const showStatus = (message: string) => {
+    setCopyStatus(message);
+    window.setTimeout(() => setCopyStatus(''), 1800);
+  };
+
+  const copy = async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      showStatus(`${label} copied`);
+    } catch {
+      showStatus(`Unable to copy ${label.toLowerCase()}`);
+    }
   };
 
   const copyAll = async () => {
-    await navigator.clipboard.writeText(`${lead.outreach.emailSubject}\n\n${lead.outreach.emailBody}\n\n${lead.outreach.voicemailScript}\n\n${lead.outreach.linkedinMessage}`);
+    await copy(`${lead.outreach.emailSubject}\n\n${lead.outreach.emailBody}\n\n${lead.outreach.voicemailScript}\n\n${lead.outreach.linkedinMessage}`, 'All outreach');
   };
 
   return (
@@ -35,19 +46,20 @@ export function OutreachEditor({ lead, onUpdate, onRegenerate }: OutreachEditorP
           <button className="btn-primary" onClick={onRegenerate}>Regenerate</button>
         </div>
       </div>
+      {copyStatus && <p className="mb-3 text-xs text-emerald-600 dark:text-emerald-300">{copyStatus}</p>}
 
       {tab === 'email' && (
         <div className="space-y-3">
           <input className="field" value={lead.outreach.emailSubject} onChange={(e) => onUpdate({ ...lead, outreach: { ...lead.outreach, emailSubject: e.target.value } })} />
           <textarea className="field min-h-48" value={lead.outreach.emailBody} onChange={(e) => onUpdate({ ...lead, outreach: { ...lead.outreach, emailBody: e.target.value } })} />
-          <button className="btn-secondary" onClick={() => copy(`${lead.outreach.emailSubject}\n${lead.outreach.emailBody}`)}>Copy Email</button>
+          <button className="btn-secondary" onClick={() => copy(`${lead.outreach.emailSubject}\n${lead.outreach.emailBody}`, 'Email')}>Copy Email</button>
         </div>
       )}
 
       {tab === 'voicemail' && (
         <div className="space-y-3">
           <textarea className="field min-h-40" value={lead.outreach.voicemailScript} onChange={(e) => onUpdate({ ...lead, outreach: { ...lead.outreach, voicemailScript: e.target.value } })} />
-          <button className="btn-secondary" onClick={() => copy(lead.outreach.voicemailScript)}>Copy Voicemail</button>
+          <button className="btn-secondary" onClick={() => copy(lead.outreach.voicemailScript, 'Voicemail')}>Copy Voicemail</button>
         </div>
       )}
 
@@ -55,7 +67,7 @@ export function OutreachEditor({ lead, onUpdate, onRegenerate }: OutreachEditorP
         <div className="space-y-3">
           <textarea className="field min-h-32" maxLength={300} value={lead.outreach.linkedinMessage} onChange={(e) => onUpdate({ ...lead, outreach: { ...lead.outreach, linkedinMessage: e.target.value } })} />
           <p className="text-xs text-slate-500">{lead.outreach.linkedinMessage.length}/300</p>
-          <button className="btn-secondary" onClick={() => copy(lead.outreach.linkedinMessage)}>Copy LinkedIn</button>
+          <button className="btn-secondary" onClick={() => copy(lead.outreach.linkedinMessage, 'LinkedIn message')}>Copy LinkedIn</button>
         </div>
       )}
     </div>
