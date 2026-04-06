@@ -21,12 +21,24 @@ export default function LeadDetailPage() {
   const params = useParams<{ id: string }>();
   const [lead, setLead] = useState<Lead | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [notesDraft, setNotesDraft] = useState('');
 
   useEffect(() => {
     const found = loadLeadById(params.id);
     setLead(found);
+    setNotesDraft(found?.notes ?? '');
     setIsHydrated(true);
   }, [params.id]);
+
+  useEffect(() => {
+    if (!lead) return;
+    const timeout = window.setTimeout(() => {
+      if (notesDraft !== lead.notes) {
+        updateLead({ ...lead, notes: notesDraft });
+      }
+    }, 500);
+    return () => window.clearTimeout(timeout);
+  }, [lead, notesDraft]);
 
   if (!isHydrated) {
     return (
@@ -93,6 +105,7 @@ export default function LeadDetailPage() {
         <div className="flex gap-2">
           <button className="btn-secondary" onClick={() => exportLeadOutreach(lead, 'txt')}>Export TXT</button>
           <button className="btn-secondary" onClick={() => exportLeadOutreach(lead, 'json')}>Export JSON</button>
+          <button className="btn-secondary print:hidden" onClick={() => window.print()}>Print</button>
           <button className="btn-primary disabled:cursor-not-allowed disabled:opacity-60" disabled={lead.status === 'Contacted'} onClick={markContacted}>
             {lead.status === 'Contacted' ? 'Already Contacted' : 'Mark Contacted'}
           </button>
@@ -129,6 +142,18 @@ export default function LeadDetailPage() {
             <p><strong>Niche:</strong> {lead.niche}</p>
             <p><strong>Personalization Hook:</strong> {lead.personalizationHook}</p>
             <div className="pt-2">
+              <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Source</label>
+              <select className="field" onChange={(event) => updateLead({ ...lead, source: event.target.value as Lead['source'] })} value={lead.source}>
+                {(['Generated', 'Manual', 'CSV Import', 'LinkedIn', 'Referral'] as Lead['source'][]).map((source) => (
+                  <option key={source} value={source}>{source}</option>
+                ))}
+              </select>
+            </div>
+            <div className="pt-2">
+              <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Follow-up Date</label>
+              <input className="field" onChange={(event) => updateLead({ ...lead, followUpDate: event.target.value || null })} type="date" value={lead.followUpDate ?? ''} />
+            </div>
+            <div className="pt-2">
               <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Pipeline Stage</label>
               <select className="field" onChange={(event) => updateStatus(event.target.value as LeadStatus)} value={lead.status}>
                 {statusOptions.map((status) => (
@@ -153,7 +178,13 @@ export default function LeadDetailPage() {
 
         <div className="mt-5">
           <h2 className="font-semibold">Notes</h2>
-          <textarea className="field mt-2 min-h-24" value={lead.notes} onChange={(e) => updateLead({ ...lead, notes: e.target.value })} />
+          <div
+            className="field mt-2 min-h-24"
+            contentEditable
+            onInput={(event) => setNotesDraft((event.target as HTMLDivElement).innerHTML)}
+            suppressContentEditableWarning
+            dangerouslySetInnerHTML={{ __html: notesDraft }}
+          />
         </div>
 
         <div className="mt-5">

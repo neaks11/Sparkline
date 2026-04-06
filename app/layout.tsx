@@ -14,6 +14,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(() => {
+              try {
+                const theme = localStorage.getItem('sparkline_theme');
+                if (theme === 'dark') document.documentElement.classList.add('dark');
+              } catch {}
+            })();`,
+          }}
+        />
+      </head>
       <body>
         <AppNav />
         {children}

@@ -1,4 +1,5 @@
 import { buildOutreach } from '@/lib/outreach-generator';
+import { loadLeads } from '@/lib/storage';
 import { Lead, LeadSearchInput } from '@/lib/types';
 
 const firstNames = ['Alex', 'Jordan', 'Casey', 'Taylor', 'Riley', 'Avery', 'Morgan', 'Cameron', 'Parker', 'Drew'];
@@ -31,6 +32,20 @@ function slugify(value: string): string {
 
 function getPainPoints(niche: string): string[] {
   const key = niche.toLowerCase();
+  if (typeof window !== 'undefined') {
+    const raw = window.localStorage.getItem('sparkline_custom_pain_points');
+    if (raw) {
+      try {
+        const custom = JSON.parse(raw) as Record<string, string[]>;
+        const customForNiche = custom[key];
+        if (customForNiche?.length) {
+          return [...customForNiche].slice(0, 3);
+        }
+      } catch {
+        // ignore malformed custom pain points
+      }
+    }
+  }
   const matched = Object.entries(nichePainPoints).find(([k]) => key.includes(k));
   const base = matched ? matched[1] : [
     'manual lead qualification consuming owner time',
@@ -43,6 +58,10 @@ function getPainPoints(niche: string): string[] {
 }
 
 export function generateSampleLeads(input: LeadSearchInput): Lead[] {
+  const existing = loadLeads();
+  const existingKeys = new Set(existing.map((lead) => `${lead.businessName.toLowerCase()}::${lead.city.toLowerCase()}`));
+  const batchId = `generated-${Date.now()}`;
+
   return Array.from({ length: 10 }, (_, index) => {
     const firstName = randomFrom(firstNames);
     const lastName = randomFrom(lastNames);
@@ -54,9 +73,19 @@ export function generateSampleLeads(input: LeadSearchInput): Lead[] {
     const painPoints = getPainPoints(input.niche);
     const leadScore = Math.floor(Math.random() * 35) + 65;
 
+    let normalizedBusinessName = businessName;
+    const key = `${businessName.toLowerCase()}::${input.city.toLowerCase()}`;
+    const duplicateDetected = existingKeys.has(key);
+    if (duplicateDetected) {
+      normalizedBusinessName = `${businessName} (2)`;
+    }
+    existingKeys.add(`${normalizedBusinessName.toLowerCase()}::${input.city.toLowerCase()}`);
+
+    const createdAt = new Date().toISOString();
     const lead: Lead = {
       id: `${Date.now()}-${index + 1}`,
-      businessName,
+      batchId,
+      businessName: normalizedBusinessName,
       contactName,
       contactTitle: randomFrom(['Owner', 'General Manager', 'Operations Manager', 'Marketing Director']),
       email: `${firstName.toLowerCase()}@${domainRoot}.com`,
@@ -70,7 +99,15 @@ export function generateSampleLeads(input: LeadSearchInput): Lead[] {
       painPoints,
       personalizationHook: randomFrom(hooks),
       leadScore,
+      scoreFactors: [
+        randomFrom(['High review velocity', 'Strong web conversion cues', 'Active hiring signals']),
+        randomFrom(['Growth-stage indicators', 'Niche demand score', 'Market responsiveness']),
+        randomFrom(['Competitive whitespace opportunity', 'Follow-up automation fit', 'High service intent']),
+      ],
       status: leadScore > 90 ? 'Qualified' : leadScore > 80 ? 'Ready' : 'New',
+      source: 'Generated',
+      followUpDate: null,
+      createdAt,
       notes: `Offer context: ${input.purpose}`,
       outreach: {
         emailSubject: '',
@@ -79,10 +116,13 @@ export function generateSampleLeads(input: LeadSearchInput): Lead[] {
         linkedinMessage: '',
         bestFirstTouch: 'Email',
       },
-      activity: [{ id: crypto.randomUUID(), label: 'Lead generated', timestamp: new Date().toISOString() }],
+      activity: [
+        { id: crypto.randomUUID(), label: 'Lead generated', timestamp: createdAt },
+        ...(duplicateDetected ? [{ id: crypto.randomUUID(), label: 'Duplicate detected — renamed', timestamp: createdAt }] : []),
+      ],
     };
 
-    lead.outreach = buildOutreach(lead, input.purpose);
+    lead.outreach = buildOutreach(lead, input.purpose, input.tone);
     return lead;
   });
 }

@@ -7,10 +7,12 @@ import { LeadSearchInput } from '@/lib/types';
 interface SearchFormProps {
   onGenerate: (input: LeadSearchInput) => void;
   loading: boolean;
+  onRerunLast?: () => void;
+  hasLastSearch?: boolean;
 }
 
-export function SearchForm({ onGenerate, loading }: SearchFormProps) {
-  const [form, setForm] = useState<LeadSearchInput>({ niche: '', city: '', state: '', purpose: '' });
+export function SearchForm({ onGenerate, loading, onRerunLast, hasLastSearch = false }: SearchFormProps) {
+  const [form, setForm] = useState<LeadSearchInput>({ niche: '', city: '', state: '', purpose: '', tone: 'Friendly' });
   const normalizedNiche = form.niche.trim().toLowerCase();
   const hasValidNiche = NICHE_OPTIONS.some((niche) => niche.toLowerCase() === normalizedNiche);
   const hasRequiredFields = Boolean(hasValidNiche && form.city.trim() && form.state.trim() && form.purpose.trim());
@@ -23,6 +25,7 @@ export function SearchForm({ onGenerate, loading }: SearchFormProps) {
       city: form.city.trim(),
       state: form.state.trim(),
       purpose: form.purpose.trim(),
+      tone: form.tone,
     });
   };
 
@@ -53,9 +56,22 @@ export function SearchForm({ onGenerate, loading }: SearchFormProps) {
         <input className="field" placeholder="e.g. AI chat widget setup for HVAC websites to book more calls" value={form.purpose} onChange={(e) => setForm((prev) => ({ ...prev, purpose: e.target.value }))} />
       </div>
       <div className="lg:col-span-2">
-        <button className="btn-primary disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={loading || !hasRequiredFields}>
-          {loading ? 'Generating...' : 'Generate Leads'}
-        </button>
+        <label className="mb-2 block text-sm font-medium">Outreach Tone</label>
+        <div className="flex flex-wrap gap-2">
+          {(['Direct', 'Friendly', 'Formal'] as const).map((tone) => (
+            <button key={tone} className={`btn-secondary ${form.tone === tone ? '!border-brand-500 !text-brand-600' : ''}`} onClick={() => setForm((prev) => ({ ...prev, tone }))} type="button">{tone}</button>
+          ))}
+        </div>
+      </div>
+      <div className="lg:col-span-2">
+        <div className="flex flex-wrap gap-2">
+          <button className="btn-primary disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={loading || !hasRequiredFields}>
+            {loading ? 'Generating...' : 'Generate Leads'}
+          </button>
+          {hasLastSearch && onRerunLast && (
+            <button className="btn-secondary" onClick={onRerunLast} type="button">Re-run Last Search</button>
+          )}
+        </div>
         {!hasRequiredFields && (
           <p className="mt-2 text-xs text-slate-500">All 4 fields are required, and niche must be selected from the standard list.</p>
         )}

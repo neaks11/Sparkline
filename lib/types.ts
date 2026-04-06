@@ -16,6 +16,7 @@ export interface ActivityItem {
 
 export interface Lead {
   id: string;
+  batchId?: string;
   businessName: string;
   contactName: string;
   contactTitle: string;
@@ -30,7 +31,11 @@ export interface Lead {
   painPoints: string[];
   personalizationHook: string;
   leadScore: number;
+  scoreFactors: string[];
   status: LeadStatus;
+  source: 'Generated' | 'Manual' | 'CSV Import' | 'LinkedIn' | 'Referral';
+  followUpDate: string | null;
+  createdAt: string;
   notes: string;
   outreach: OutreachBundle;
   activity: ActivityItem[];
@@ -41,6 +46,7 @@ export interface LeadSearchInput {
   city: string;
   state: string;
   purpose: string;
+  tone: 'Direct' | 'Friendly' | 'Formal';
 }
 
 export interface Account {

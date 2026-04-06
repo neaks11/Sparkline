@@ -33,3 +33,18 @@ body {
 .brand-gradient-text {
   @apply bg-gradient-to-r from-violet-600 via-pink-500 to-orange-500 bg-clip-text text-transparent;
 }
+
+@media print {
+  nav,
+  .print\:hidden,
+  button,
+  .btn-primary,
+  .btn-secondary {
+    display: none !important;
+  }
+
+  main {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+}

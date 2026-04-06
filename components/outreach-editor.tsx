@@ -30,7 +30,10 @@ export function OutreachEditor({ lead, onUpdate, onRegenerate }: OutreachEditorP
   };
 
   const copyAll = async () => {
-    await copy(`${lead.outreach.emailSubject}\n\n${lead.outreach.emailBody}\n\n${lead.outreach.voicemailScript}\n\n${lead.outreach.linkedinMessage}`, 'All outreach');
+    await copy(
+      `EMAIL SUBJECT\n${lead.outreach.emailSubject}\n\nEMAIL BODY\n${lead.outreach.emailBody}\n\nVOICEMAIL SCRIPT\n${lead.outreach.voicemailScript}\n\nLINKEDIN MESSAGE\n${lead.outreach.linkedinMessage}`,
+      'Full outreach bundle',
+    );
   };
 
   return (
@@ -42,7 +45,7 @@ export function OutreachEditor({ lead, onUpdate, onRegenerate }: OutreachEditorP
           ))}
         </div>
         <div className="flex gap-2">
-          <button className="btn-secondary" onClick={copyAll}>Copy All 3</button>
+          <button className="btn-secondary" onClick={copyAll}>Copy All</button>
           <button className="btn-primary" onClick={onRegenerate}>Regenerate</button>
         </div>
       </div>
