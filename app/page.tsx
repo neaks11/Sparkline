@@ -94,7 +94,8 @@ export default function HomePage() {
     await new Promise((resolve) => setTimeout(resolve, 500));
     const sessionId = crypto.randomUUID();
     const fresh = generateSampleLeads(input).map((lead) => ({ ...lead, batchId: sessionId }));
-    persist(fresh);
+    const merged = [...loadLeads(), ...fresh];
+    persist(merged);
     const duplicateCount = fresh.filter((lead) => lead.activity.some((item) => item.label.includes('Duplicate detected'))).length;
     setDuplicateWarning(duplicateCount ? `${duplicateCount} duplicate names were detected and renamed.` : '');
     setSessions(appendSession({ id: sessionId, createdAt: new Date().toISOString(), input, duplicateCount }));
