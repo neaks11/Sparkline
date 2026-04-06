@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { OutreachEditor } from '@/components/outreach-editor';
 import { SparklineLogo } from '@/components/sparkline-logo';
 import { exportLeadOutreach } from '@/lib/export';
+import { buildNurtureSequence } from '@/lib/nurture-sequence';
 import { buildOutreach } from '@/lib/outreach-generator';
 import { loadLeadById, loadLeads, saveLeads } from '@/lib/storage';
 import { Lead, LeadStatus } from '@/lib/types';
@@ -88,6 +89,20 @@ export default function LeadDetailPage() {
       ...lead,
       status: nextStatus,
       activity: [...lead.activity, { id: crypto.randomUUID(), label: `Status updated to ${nextStatus}`, timestamp: new Date().toISOString() }],
+    });
+  };
+
+  const sequence = buildNurtureSequence(lead);
+  const completed = new Set(lead.activity.filter((item) => item.label.startsWith('Nurture:')).map((item) => item.label.replace('Nurture: ', '')));
+
+  const logNurtureStep = (stepId: string, channel: string) => {
+    updateLead({
+      ...lead,
+      activity: [
+        ...lead.activity,
+        { id: crypto.randomUUID(), label: `Nurture: ${stepId}`, timestamp: new Date().toISOString() },
+        { id: crypto.randomUUID(), label: `Follow-up sent via ${channel}`, timestamp: new Date().toISOString() },
+      ],
     });
   };
 
@@ -192,6 +207,42 @@ export default function LeadDetailPage() {
           <ul className="mt-2 space-y-1 text-sm text-slate-700 dark:text-slate-300">
             {lead.activity.slice().reverse().map((item) => <li key={item.id}>• {new Date(item.timestamp).toLocaleString()}: {item.label}</li>)}
           </ul>
+        </div>
+      </section>
+
+      <section className="card p-6">
+        <h2 className="text-lg font-semibold">2-Week Nurture Sequence (Recommended)</h2>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Designed for multi-touch follow-up across email, call, and LinkedIn with clear objective progression.</p>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[860px] text-sm">
+            <thead className="bg-slate-100 text-left dark:bg-slate-800">
+              <tr>
+                {['Day', 'Phase', 'Channel', 'Format', 'Objective', 'Suggested Messaging', 'Action'].map((heading) => (
+                  <th key={heading} className="px-3 py-2 font-semibold">{heading}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sequence.map((step) => {
+                const isDone = completed.has(step.id);
+                return (
+                  <tr key={step.id} className="border-t border-slate-200 dark:border-slate-700">
+                    <td className="px-3 py-2">Day {step.day}</td>
+                    <td className="px-3 py-2">{step.phase}</td>
+                    <td className="px-3 py-2">{step.channel}</td>
+                    <td className="px-3 py-2">{step.format}</td>
+                    <td className="px-3 py-2">{step.objective}</td>
+                    <td className="px-3 py-2 text-slate-700 dark:text-slate-300">{step.message}</td>
+                    <td className="px-3 py-2">
+                      <button className="btn-secondary" disabled={isDone} onClick={() => logNurtureStep(step.id, step.channel)}>
+                        {isDone ? 'Logged' : 'Log Activity'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </section>
 
