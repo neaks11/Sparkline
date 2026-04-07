@@ -46,6 +46,8 @@ export default function HomePage() {
   const [duplicateWarning, setDuplicateWarning] = useState('');
   const [sessions, setSessions] = useState(loadSessions());
   const [goal, setGoal] = useState(loadGoal().monthly);
+  const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
+  const [undoSnapshot, setUndoSnapshot] = useState<Lead[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const backupInputRef = useRef<HTMLInputElement>(null);
 
@@ -53,6 +55,12 @@ export default function HomePage() {
     setLeads(loadLeads());
     setSessions(loadSessions());
   }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timeout = window.setTimeout(() => setToast(null), 2600);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
 
   const pipelineCounts = useMemo<Record<LeadStatus, number>>(() => ({
     New: leads.filter((lead) => lead.status === 'New').length,
@@ -103,18 +111,39 @@ export default function HomePage() {
   };
 
   const updateLead = (updated: Lead) => {
+    const requiresFollowUp = (updated.status === 'Qualified' || updated.status === 'Proposal Sent') && !updated.followUpDate;
+    const nextLead = requiresFollowUp
+      ? {
+        ...updated,
+        followUpDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        activity: [...updated.activity, { id: crypto.randomUUID(), label: 'Follow-up date auto-set for active pipeline stage', timestamp: new Date().toISOString() }],
+      }
+      : updated;
+
     const next = leads.map((lead) => lead.id === updated.id ? {
-      ...updated,
-      activity: [...updated.activity, { id: crypto.randomUUID(), label: `Status updated to ${updated.status} from dashboard`, timestamp: new Date().toISOString() }],
+      ...nextLead,
+      activity: [...nextLead.activity, { id: crypto.randomUUID(), label: `Status updated to ${nextLead.status} from dashboard`, timestamp: new Date().toISOString() }],
     } : lead);
     persist(next);
+    if (requiresFollowUp) {
+      setToast({ message: 'Status requires follow-up date. Auto-set to +3 days.', tone: 'success' });
+    }
   };
 
   const runImportCsv = async (file: File) => {
-    const text = await file.text();
-    const imported = parseLeadsCsv(text);
-    const merged = appendLeads(imported);
-    persist(merged);
+    try {
+      const text = await file.text();
+      const imported = parseLeadsCsv(text);
+      if (!imported.length) {
+        setToast({ message: 'No valid rows found in CSV import.', tone: 'error' });
+        return;
+      }
+      const merged = appendLeads(imported);
+      persist(merged);
+      setToast({ message: `Imported ${imported.length} leads from CSV.`, tone: 'success' });
+    } catch {
+      setToast({ message: 'CSV import failed. Please verify file format.', tone: 'error' });
+    }
   };
 
   const totalLeads = leads.length;
@@ -164,6 +193,12 @@ export default function HomePage() {
       </header>
 
       <section className="space-y-6">
+        {toast && (
+          <div className={`rounded-xl px-4 py-3 text-sm ${toast.tone === 'success' ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-900/20 dark:text-emerald-300' : 'border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-700/40 dark:bg-rose-900/20 dark:text-rose-300'}`}>
+            {toast.message}
+          </div>
+        )}
+
         <SearchForm hasLastSearch={sessions.length > 0} loading={isLoading} onGenerate={generate} onRerunLast={() => sessions[0] && generate(sessions[0].input)} />
 
         {duplicateWarning && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-300">{duplicateWarning}</div>}
@@ -207,12 +242,20 @@ export default function HomePage() {
             <button className="btn-secondary" onClick={exportBackup}>Export Backup</button>
             <button className="btn-secondary" onClick={() => backupInputRef.current?.click()}>Import Backup</button>
             <button className="btn-secondary" disabled={!leads.length || isLoading} onClick={() => {
+              setUndoSnapshot(leads);
               setLeads([]);
               saveLeads([]);
               saveAccounts([]);
               const activityWithoutLeadEvents = loadActivities().filter((item) => !leads.find((lead) => lead.id === item.accountId));
               saveActivities(activityWithoutLeadEvents);
+              setToast({ message: 'Leads cleared. You can undo once.', tone: 'success' });
             }}>Clear Leads</button>
+            <button className="btn-secondary" disabled={!undoSnapshot} onClick={() => {
+              if (!undoSnapshot) return;
+              persist(undoSnapshot);
+              setUndoSnapshot(null);
+              setToast({ message: 'Undo complete. Leads restored.', tone: 'success' });
+            }}>Undo Clear</button>
           </div>
         </div>
 
@@ -225,10 +268,15 @@ export default function HomePage() {
         <input accept=".json" className="hidden" onChange={async (event) => {
           const file = event.target.files?.[0];
           if (file) {
-            const text = await file.text();
-            importBackup(JSON.parse(text) as { leads?: Lead[]; sessions?: ReturnType<typeof loadSessions> });
-            setLeads(loadLeads());
-            setSessions(loadSessions());
+            try {
+              const text = await file.text();
+              importBackup(JSON.parse(text) as { leads?: Lead[]; sessions?: ReturnType<typeof loadSessions> });
+              setLeads(loadLeads());
+              setSessions(loadSessions());
+              setToast({ message: 'Backup imported successfully.', tone: 'success' });
+            } catch {
+              setToast({ message: 'Backup import failed. Invalid JSON structure.', tone: 'error' });
+            }
           }
           event.currentTarget.value = '';
         }} ref={backupInputRef} type="file" />

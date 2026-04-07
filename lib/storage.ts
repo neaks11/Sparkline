@@ -7,6 +7,8 @@ const TASKS_KEY = 'sparkline_tasks';
 const PROFILE_KEY = 'sparkline_profile';
 const SESSIONS_KEY = 'sparkline_sessions';
 const GOAL_KEY = 'sparkline_goal';
+const SCHEMA_KEY = 'sparkline_schema_version';
+const SCHEMA_VERSION = 2;
 
 function readJson<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -17,6 +19,24 @@ function readJson<T>(key: string, fallback: T): T {
   } catch {
     return fallback;
   }
+}
+
+function migrateSchemaIfNeeded(): void {
+  if (typeof window === 'undefined') return;
+  const current = Number(window.localStorage.getItem(SCHEMA_KEY) ?? '1');
+  if (current >= SCHEMA_VERSION) return;
+
+  // V2 migration: normalize lead defaults for newer metadata fields.
+  const leads = readJson<Lead[]>(STORAGE_KEY, []);
+  const migrated = leads.map((lead) => ({
+    ...lead,
+    scoreFactors: lead.scoreFactors ?? ['No factors yet'],
+    source: lead.source ?? 'Generated',
+    followUpDate: lead.followUpDate ?? null,
+    createdAt: lead.createdAt ?? new Date().toISOString(),
+  }));
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+  window.localStorage.setItem(SCHEMA_KEY, String(SCHEMA_VERSION));
 }
 
 export function saveLeads(leads: Lead[]): void {
@@ -31,6 +51,7 @@ export function appendLeads(next: Lead[]): Lead[] {
 }
 
 export function loadLeads(): Lead[] {
+  migrateSchemaIfNeeded();
   const leads = readJson<Lead[]>(STORAGE_KEY, []);
   return leads.map((lead) => ({
     ...lead,
