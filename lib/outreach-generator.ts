@@ -1,10 +1,10 @@
-import { Lead, OutreachBundle } from '@/lib/types';
+import { Lead, LeadSearchInput, OutreachBundle } from '@/lib/types';
 
 function pick<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-export function buildOutreach(lead: Lead, userNotes?: string): OutreachBundle {
+export function buildOutreach(lead: Lead, userNotes?: string, tone: LeadSearchInput['tone'] = 'Friendly'): OutreachBundle {
   const valueProps = [
     'tighten response time so fewer inquiries go cold',
     'lift booked appointments from existing traffic',
@@ -18,7 +18,19 @@ export function buildOutreach(lead: Lead, userNotes?: string): OutreachBundle {
   const noteLine = userNotes ? `Context for my outreach: ${userNotes}. ` : '';
 
   const emailSubject = `${lead.city} growth idea for ${lead.businessName}`;
-  const emailBody = `Hi ${lead.contactName},\n\nI work with ${lead.niche} teams in ${lead.city} that want steadier pipeline without burning time on manual follow-up. I noticed ${hook.toLowerCase()}, and it stood out because shops like yours usually mention ${painPoint.toLowerCase()} as a bottleneck. ${noteLine}We typically help owners ${valueProp}.\n\nIf you are open to it, I can send a quick 3-point teardown focused on what to adjust first for ${lead.businessName}. No hard pitch—just practical ideas you can use either way.\n\nWould it be useful if I shared that this week?\n\nBest,\n[Your Name]`;
+  const intro = tone === 'Direct'
+    ? `I help ${lead.niche} teams in ${lead.city} ${valueProp}.`
+    : tone === 'Formal'
+      ? `I work with ${lead.niche} organizations in ${lead.city} focused on sustainable pipeline growth.`
+      : `I work with ${lead.niche} teams in ${lead.city} that want steadier pipeline without burning time on manual follow-up.`;
+
+  const close = tone === 'Direct'
+    ? 'Worth a quick 10-minute review this week?'
+    : tone === 'Formal'
+      ? 'Would you be open to a brief review this week?'
+      : 'Would it be useful if I shared that this week?';
+
+  const emailBody = `Hi ${lead.contactName},\n\n${intro} I noticed ${hook.toLowerCase()}, and it stood out because shops like yours usually mention ${painPoint.toLowerCase()} as a bottleneck. ${noteLine}We typically help owners ${valueProp}.\n\nIf you are open to it, I can send a quick 3-point teardown focused on what to adjust first for ${lead.businessName}. No hard pitch—just practical ideas you can use either way.\n\n${close}\n\nBest,\n[Your Name]`;
 
   const voicemailScript = `Hey ${lead.contactName}, this is [Your Name]. I was reaching out after looking at ${lead.businessName} in ${lead.city}. We help ${lead.niche} operators ${valueProp}. A lot of teams I speak with are dealing with ${painPoint.toLowerCase()}, so I thought it might be relevant. If you want, I can send a short breakdown with a few practical wins for your team. You can call or text me back at [Your Number]. Again, this is [Your Name]. Thanks.`;
 

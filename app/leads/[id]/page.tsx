@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { OutreachEditor } from '@/components/outreach-editor';
 import { SparklineLogo } from '@/components/sparkline-logo';
 import { exportLeadOutreach } from '@/lib/export';
+import { buildNurtureSequence } from '@/lib/nurture-sequence';
 import { buildOutreach } from '@/lib/outreach-generator';
 import { loadLeadById, loadLeads, saveLeads } from '@/lib/storage';
 import { Lead, LeadStatus } from '@/lib/types';
@@ -21,12 +22,24 @@ export default function LeadDetailPage() {
   const params = useParams<{ id: string }>();
   const [lead, setLead] = useState<Lead | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [notesDraft, setNotesDraft] = useState('');
 
   useEffect(() => {
     const found = loadLeadById(params.id);
     setLead(found);
+    setNotesDraft(found?.notes ?? '');
     setIsHydrated(true);
   }, [params.id]);
+
+  useEffect(() => {
+    if (!lead) return;
+    const timeout = window.setTimeout(() => {
+      if (notesDraft !== lead.notes) {
+        updateLead({ ...lead, notes: notesDraft });
+      }
+    }, 500);
+    return () => window.clearTimeout(timeout);
+  }, [lead, notesDraft]);
 
   if (!isHydrated) {
     return (
@@ -79,6 +92,20 @@ export default function LeadDetailPage() {
     });
   };
 
+  const sequence = buildNurtureSequence(lead);
+  const completed = new Set(lead.activity.filter((item) => item.label.startsWith('Nurture:')).map((item) => item.label.replace('Nurture: ', '')));
+
+  const logNurtureStep = (stepId: string, channel: string) => {
+    updateLead({
+      ...lead,
+      activity: [
+        ...lead.activity,
+        { id: crypto.randomUUID(), label: `Nurture: ${stepId}`, timestamp: new Date().toISOString() },
+        { id: crypto.randomUUID(), label: `Follow-up sent via ${channel}`, timestamp: new Date().toISOString() },
+      ],
+    });
+  };
+
   return (
     <main className="mx-auto min-h-screen w-full max-w-6xl space-y-6 px-4 py-8 md:px-6">
       <header className="flex items-center gap-3">
@@ -93,6 +120,7 @@ export default function LeadDetailPage() {
         <div className="flex gap-2">
           <button className="btn-secondary" onClick={() => exportLeadOutreach(lead, 'txt')}>Export TXT</button>
           <button className="btn-secondary" onClick={() => exportLeadOutreach(lead, 'json')}>Export JSON</button>
+          <button className="btn-secondary print:hidden" onClick={() => window.print()}>Print</button>
           <button className="btn-primary disabled:cursor-not-allowed disabled:opacity-60" disabled={lead.status === 'Contacted'} onClick={markContacted}>
             {lead.status === 'Contacted' ? 'Already Contacted' : 'Mark Contacted'}
           </button>
@@ -129,6 +157,18 @@ export default function LeadDetailPage() {
             <p><strong>Niche:</strong> {lead.niche}</p>
             <p><strong>Personalization Hook:</strong> {lead.personalizationHook}</p>
             <div className="pt-2">
+              <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Source</label>
+              <select className="field" onChange={(event) => updateLead({ ...lead, source: event.target.value as Lead['source'] })} value={lead.source}>
+                {(['Generated', 'Manual', 'CSV Import', 'LinkedIn', 'Referral'] as Lead['source'][]).map((source) => (
+                  <option key={source} value={source}>{source}</option>
+                ))}
+              </select>
+            </div>
+            <div className="pt-2">
+              <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Follow-up Date</label>
+              <input className="field" onChange={(event) => updateLead({ ...lead, followUpDate: event.target.value || null })} type="date" value={lead.followUpDate ?? ''} />
+            </div>
+            <div className="pt-2">
               <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Pipeline Stage</label>
               <select className="field" onChange={(event) => updateStatus(event.target.value as LeadStatus)} value={lead.status}>
                 {statusOptions.map((status) => (
@@ -153,7 +193,13 @@ export default function LeadDetailPage() {
 
         <div className="mt-5">
           <h2 className="font-semibold">Notes</h2>
-          <textarea className="field mt-2 min-h-24" value={lead.notes} onChange={(e) => updateLead({ ...lead, notes: e.target.value })} />
+          <div
+            className="field mt-2 min-h-24"
+            contentEditable
+            onInput={(event) => setNotesDraft((event.target as HTMLDivElement).innerHTML)}
+            suppressContentEditableWarning
+            dangerouslySetInnerHTML={{ __html: notesDraft }}
+          />
         </div>
 
         <div className="mt-5">
@@ -161,6 +207,42 @@ export default function LeadDetailPage() {
           <ul className="mt-2 space-y-1 text-sm text-slate-700 dark:text-slate-300">
             {lead.activity.slice().reverse().map((item) => <li key={item.id}>• {new Date(item.timestamp).toLocaleString()}: {item.label}</li>)}
           </ul>
+        </div>
+      </section>
+
+      <section className="card p-6">
+        <h2 className="text-lg font-semibold">2-Week Nurture Sequence (Recommended)</h2>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Designed for multi-touch follow-up across email, call, and LinkedIn with clear objective progression.</p>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[860px] text-sm">
+            <thead className="bg-slate-100 text-left dark:bg-slate-800">
+              <tr>
+                {['Day', 'Phase', 'Channel', 'Format', 'Objective', 'Suggested Messaging', 'Action'].map((heading) => (
+                  <th key={heading} className="px-3 py-2 font-semibold">{heading}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sequence.map((step) => {
+                const isDone = completed.has(step.id);
+                return (
+                  <tr key={step.id} className="border-t border-slate-200 dark:border-slate-700">
+                    <td className="px-3 py-2">Day {step.day}</td>
+                    <td className="px-3 py-2">{step.phase}</td>
+                    <td className="px-3 py-2">{step.channel}</td>
+                    <td className="px-3 py-2">{step.format}</td>
+                    <td className="px-3 py-2">{step.objective}</td>
+                    <td className="px-3 py-2 text-slate-700 dark:text-slate-300">{step.message}</td>
+                    <td className="px-3 py-2">
+                      <button className="btn-secondary" disabled={isDone} onClick={() => logNurtureStep(step.id, step.channel)}>
+                        {isDone ? 'Logged' : 'Log Activity'}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </section>
 
