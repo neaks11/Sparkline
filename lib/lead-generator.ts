@@ -140,6 +140,13 @@ async function fetchFromApollo(input: LeadSearchInput, batchId: string): Promise
     });
 
     if (res.status === 501) return null; // No API key — fall back to mock
+    if (res.status === 402) {
+      // Key is valid but plan doesn't support search — store flag so UI can show upgrade prompt
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('sparkline:apollo-plan-required'));
+      }
+      return null;
+    }
     if (!res.ok) {
       console.error('Apollo API error:', res.status);
       return null;

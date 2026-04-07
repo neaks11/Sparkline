@@ -62,6 +62,7 @@ export default function HomePage() {
   const [view, setView] = useState<'table' | 'kanban'>('table');
   const [duplicateWarning, setDuplicateWarning] = useState('');
   const [lastSource, setLastSource] = useState<'apollo' | 'mock' | null>(null);
+  const [apolloPlanRequired, setApolloPlanRequired] = useState(false);
   const [sessions, setSessions] = useState(loadSessions());
   const [goal, setGoal] = useState(loadGoal().monthly);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -94,7 +95,12 @@ export default function HomePage() {
       }
     };
     window.addEventListener('sparkline:generate', handler);
-    return () => window.removeEventListener('sparkline:generate', handler);
+    const planHandler = () => setApolloPlanRequired(true);
+    window.addEventListener('sparkline:apollo-plan-required', planHandler);
+    return () => {
+      window.removeEventListener('sparkline:generate', handler);
+      window.removeEventListener('sparkline:apollo-plan-required', planHandler);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pipelineCounts = useMemo<Record<LeadStatus, number>>(() => ({
@@ -272,8 +278,17 @@ export default function HomePage() {
           } : undefined}
         />
 
-        {/* Source badge */}
-        {lastSource && (
+        {/* Source / Apollo status badge */}
+        {apolloPlanRequired && (
+          <div className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-300">
+            <span className="h-2 w-2 rounded-full bg-amber-400" />
+            🔑 Apollo key valid — people search requires a paid plan.{' '}
+            <a href="https://app.apollo.io/#/settings/plans/upgrade" target="_blank" rel="noreferrer" className="underline hover:no-underline">
+              Upgrade here
+            </a>
+          </div>
+        )}
+        {!apolloPlanRequired && lastSource && (
           <div className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium ${
             lastSource === 'apollo'
               ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-700/40 dark:bg-emerald-900/20 dark:text-emerald-300'

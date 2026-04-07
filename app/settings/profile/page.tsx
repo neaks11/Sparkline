@@ -70,13 +70,18 @@ export default function ProfilePage() {
   const [cityInput, setCityInput] = useState('');
   const [stateInput, setStateInput] = useState('');
   const [apolloKeySet, setApolloKeySet] = useState(false);
+  const [apolloPlanRequired, setApolloPlanRequired] = useState(false);
 
   useEffect(() => {
     const existing = loadProfile();
     if (existing) setProfile(existing);
     // Check if Apollo key configured (via ping to API)
     fetch('/api/apollo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ per_page: 1, q_keywords: 'test' }) })
-      .then((r) => setApolloKeySet(r.status !== 501))
+      .then((r) => {
+        if (r.status === 501) { setApolloKeySet(false); setApolloPlanRequired(false); }
+        else if (r.status === 402) { setApolloKeySet(true); setApolloPlanRequired(true); }
+        else { setApolloKeySet(true); setApolloPlanRequired(false); }
+      })
       .catch(() => setApolloKeySet(false));
   }, []);
 
@@ -384,17 +389,27 @@ export default function ProfilePage() {
             <p className="text-xs text-slate-500">Real contact data for live lead generation</p>
           </div>
           <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-            apolloKeySet
+            apolloKeySet && !apolloPlanRequired
               ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-              : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
+              : apolloPlanRequired
+                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
           }`}>
-            {apolloKeySet ? '🟢 Connected' : '⚪ Not configured'}
+            {apolloKeySet && !apolloPlanRequired ? '🟢 Connected' : apolloPlanRequired ? '🟡 Key valid — upgrade plan' : '⚪ Not configured'}
           </span>
         </div>
         {!apolloKeySet && (
           <p className="text-xs text-slate-400">
             Add <code className="rounded bg-slate-100 px-1 dark:bg-slate-800">APOLLO_API_KEY=your_key</code> to{' '}
             <code className="rounded bg-slate-100 px-1 dark:bg-slate-800">~/Sparkline/.env.local</code> and restart the server.
+          </p>
+        )}
+        {apolloPlanRequired && (
+          <p className="text-xs text-amber-600 dark:text-amber-400">
+            Your Apollo key is connected but people search requires a paid plan.{' '}
+            <a href="https://app.apollo.io/#/settings/plans/upgrade" target="_blank" rel="noreferrer" className="underline">
+              Upgrade at app.apollo.io →
+            </a>
           </p>
         )}
       </div>

@@ -11,20 +11,39 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
 
+  // Apollo requires key in X-Api-Key header (not request body)
   const res = await fetch(APOLLO_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-cache',
+      'X-Api-Key': apiKey,
     },
-    body: JSON.stringify({ ...body, api_key: apiKey }),
+    body: JSON.stringify(body),
   });
 
+  const text = await res.text();
+
+  // Free plan returns 403 with "API_INACCESSIBLE" — treat as plan upgrade needed
+  if (res.status === 403) {
+    let parsed: { error_code?: string } = {};
+    try { parsed = JSON.parse(text); } catch { /* ignore */ }
+    if (parsed.error_code === 'API_INACCESSIBLE') {
+      return NextResponse.json(
+        { error: 'Apollo plan upgrade required', error_code: 'PLAN_UPGRADE_REQUIRED' },
+        { status: 402 }
+      );
+    }
+  }
+
   if (!res.ok) {
-    const text = await res.text();
     return NextResponse.json({ error: `Apollo error: ${res.status}`, detail: text }, { status: res.status });
   }
 
-  const data = await res.json();
-  return NextResponse.json(data);
+  try {
+    const data = JSON.parse(text);
+    return NextResponse.json(data);
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON from Apollo', detail: text }, { status: 502 });
+  }
 }
