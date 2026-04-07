@@ -14,6 +14,16 @@ export interface ActivityItem {
   timestamp: string;
 }
 
+
+export interface DataQualityProfile {
+  confidenceScore: number;
+  emailValid: boolean;
+  phoneValid: boolean;
+  websiteValid: boolean;
+  categoryConfidence: number;
+  enrichedAt: string;
+}
+
 export interface Lead {
   id: string;
   batchId?: string;
@@ -37,6 +47,7 @@ export interface Lead {
   followUpDate: string | null;
   createdAt: string;
   notes: string;
+  dataQuality?: DataQualityProfile;
   outreach: OutreachBundle;
   activity: ActivityItem[];
 }

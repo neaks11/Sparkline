@@ -211,6 +211,18 @@ export default function LeadDetailPage() {
         </div>
 
         <div className="mt-5">
+          <h2 className="font-semibold">Data Quality (Phase 3)</h2>
+          <div className="mt-2 grid gap-2 text-sm md:grid-cols-2">
+            <p><strong>Confidence Score:</strong> {lead.dataQuality?.confidenceScore ?? '—'} / 100</p>
+            <p><strong>Category Confidence:</strong> {lead.dataQuality?.categoryConfidence ?? '—'} / 100</p>
+            <p><strong>Email Valid:</strong> {lead.dataQuality?.emailValid ? 'Yes' : 'No'}</p>
+            <p><strong>Phone Valid:</strong> {lead.dataQuality?.phoneValid ? 'Yes' : 'No'}</p>
+            <p><strong>Website Valid:</strong> {lead.dataQuality?.websiteValid ? 'Yes' : 'No'}</p>
+            <p><strong>Enriched At:</strong> {lead.dataQuality?.enrichedAt ? new Date(lead.dataQuality.enrichedAt).toLocaleString() : '—'}</p>
+          </div>
+        </div>
+
+        <div className="mt-5">
           <h2 className="font-semibold">Activity Timeline</h2>
           <ul className="mt-2 space-y-1 text-sm text-slate-700 dark:text-slate-300">
             {lead.activity.slice().reverse().map((item) => <li key={item.id}>• {new Date(item.timestamp).toLocaleString()}: {item.label}</li>)}

@@ -15,6 +15,7 @@ import { parseLeadsCsv } from '@/lib/import';
 import { generateSampleLeads } from '@/lib/lead-generator';
 import { appendLeads, appendSession, exportBackup, importBackup, loadActivities, loadGoal, loadLeads, loadSessions, saveAccounts, saveActivities, saveGoal, saveLeads } from '@/lib/storage';
 import { Lead, LeadSearchInput, LeadStatus } from '@/lib/types';
+import { enrichLeads, mergeAllDuplicates } from '@/lib/data-quality';
 
 const statuses: Array<LeadStatus | 'All' | 'Due Today' | 'Stale (14+ days)'> = ['All', 'New', 'Ready', 'Contacted', 'Qualified', 'Proposal Sent', 'Won', 'Lost', 'Due Today', 'Stale (14+ days)'];
 const sourceOptions: Array<Lead['source'] | 'All'> = ['All', 'Generated', 'Manual', 'CSV Import', 'LinkedIn', 'Referral'];
@@ -91,10 +92,11 @@ export default function HomePage() {
   }, [debouncedQuery, leads, minScore, sortDirection, sourceFilter, statusFilter]);
 
   const persist = (next: Lead[]) => {
-    setLeads(next);
-    saveLeads(next);
-    saveAccounts(next.map(mapLeadToAccount));
-    saveActivities(next.flatMap(mapLeadActivities));
+    const enriched = enrichLeads(next);
+    setLeads(enriched);
+    saveLeads(enriched);
+    saveAccounts(enriched.map(mapLeadToAccount));
+    saveActivities(enriched.flatMap(mapLeadActivities));
   };
 
   const generate = async (input: LeadSearchInput) => {
@@ -240,6 +242,12 @@ export default function HomePage() {
             <button className="btn-primary" disabled={!filtered.length || isLoading} onClick={() => exportLeadsCsv(filtered)}>{isLoading ? 'Generating...' : 'Export CSV'}</button>
             <button className="btn-secondary" onClick={() => fileInputRef.current?.click()}>Import CSV</button>
             <button className="btn-secondary" onClick={exportBackup}>Export Backup</button>
+
+            <button className="btn-secondary" disabled={isLoading || !leads.length} onClick={() => {
+              const { mergedLeads, mergedGroups } = mergeAllDuplicates(leads);
+              persist(mergedLeads);
+              setToast({ message: mergedGroups ? `Merged ${mergedGroups} duplicate lead groups.` : 'No duplicate groups found.', tone: 'success' });
+            }}>Merge Duplicates</button>
             <button className="btn-secondary" onClick={() => backupInputRef.current?.click()}>Import Backup</button>
             <button className="btn-secondary" disabled={!leads.length || isLoading} onClick={() => {
               setUndoSnapshot(leads);

@@ -1,4 +1,5 @@
 import { Account, ActivityRecord, FollowUpTask, Lead, UserProfile } from '@/lib/types';
+import { computeDataConfidence } from '@/lib/data-quality';
 
 const STORAGE_KEY = 'sparkline_leads';
 const ACCOUNTS_KEY = 'sparkline_accounts';
@@ -8,7 +9,7 @@ const PROFILE_KEY = 'sparkline_profile';
 const SESSIONS_KEY = 'sparkline_sessions';
 const GOAL_KEY = 'sparkline_goal';
 const SCHEMA_KEY = 'sparkline_schema_version';
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 function readJson<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -34,6 +35,7 @@ function migrateSchemaIfNeeded(): void {
     source: lead.source ?? 'Generated',
     followUpDate: lead.followUpDate ?? null,
     createdAt: lead.createdAt ?? new Date().toISOString(),
+    dataQuality: lead.dataQuality ?? computeDataConfidence({ ...lead, createdAt: lead.createdAt ?? new Date().toISOString(), followUpDate: lead.followUpDate ?? null, scoreFactors: lead.scoreFactors ?? ['No factors yet'], source: lead.source ?? 'Generated' }),
   }));
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
   window.localStorage.setItem(SCHEMA_KEY, String(SCHEMA_VERSION));
@@ -59,6 +61,7 @@ export function loadLeads(): Lead[] {
     source: lead.source ?? 'Generated',
     followUpDate: lead.followUpDate ?? null,
     createdAt: lead.createdAt ?? new Date().toISOString(),
+    dataQuality: lead.dataQuality ?? computeDataConfidence({ ...lead, createdAt: lead.createdAt ?? new Date().toISOString(), followUpDate: lead.followUpDate ?? null, scoreFactors: lead.scoreFactors ?? ['No factors yet'], source: lead.source ?? 'Generated' }),
   }));
 }
 
