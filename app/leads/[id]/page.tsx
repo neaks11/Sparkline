@@ -8,6 +8,7 @@ import { SparklineLogo } from '@/components/sparkline-logo';
 import { exportLeadOutreach } from '@/lib/export';
 import { buildNurtureSequence } from '@/lib/nurture-sequence';
 import { buildOutreach } from '@/lib/outreach-generator';
+import { buildLeadBrief, detectPersona, predictObjections, recommendChannels } from '@/lib/ai-insights';
 import { loadLeadById, loadLeads, saveLeads } from '@/lib/storage';
 import { Lead, LeadStatus } from '@/lib/types';
 
@@ -64,9 +65,10 @@ export default function LeadDetailPage() {
   };
 
   const regenerate = () => {
+    const persona = detectPersona(lead.contactTitle);
     const next = {
       ...lead,
-      outreach: buildOutreach(lead, lead.notes),
+      outreach: buildOutreach(lead, lead.notes, 'Friendly', persona),
       activity: [...lead.activity, { id: crypto.randomUUID(), label: 'Outreach regenerated', timestamp: new Date().toISOString() }],
     };
     updateLead(next);
@@ -93,6 +95,12 @@ export default function LeadDetailPage() {
   };
 
   const sequence = buildNurtureSequence(lead);
+
+  const persona = detectPersona(lead.contactTitle);
+  const brief = buildLeadBrief(lead);
+  const objections = predictObjections(lead);
+  const channels = recommendChannels(lead);
+
   const completed = new Set(lead.activity.filter((item) => item.label.startsWith('Nurture:')).map((item) => item.label.replace('Nurture: ', '')));
 
   const logNurtureStep = (stepId: string, channel: string) => {
@@ -207,6 +215,54 @@ export default function LeadDetailPage() {
           <ul className="mt-2 space-y-1 text-sm text-slate-700 dark:text-slate-300">
             {lead.activity.slice().reverse().map((item) => <li key={item.id}>• {new Date(item.timestamp).toLocaleString()}: {item.label}</li>)}
           </ul>
+        </div>
+      </section>
+
+      <section className="card p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">AI Lead Intelligence (Phase 2)</h2>
+          <button
+            className="btn-secondary"
+            onClick={() => updateLead({
+              ...lead,
+              outreach: buildOutreach(lead, lead.notes, 'Friendly', persona),
+              activity: [...lead.activity, { id: crypto.randomUUID(), label: `Persona-aware outreach applied (${persona})`, timestamp: new Date().toISOString() }],
+            })}
+          >
+            Apply Persona-Aware Outreach
+          </button>
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+            <p className="text-xs font-semibold uppercase text-slate-500">Detected Persona</p>
+            <p className="mt-1 text-sm font-medium">{persona}</p>
+            <p className="mt-3 text-xs font-semibold uppercase text-slate-500">Channel Ranking</p>
+            <ul className="mt-2 space-y-2 text-sm">
+              {channels.map((item) => (
+                <li key={item.channel} className="rounded bg-slate-100 px-2 py-1 dark:bg-slate-800">
+                  <strong>{item.channel}</strong> ({item.score}/100) — {item.reason}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-700 lg:col-span-2">
+            <p className="text-xs font-semibold uppercase text-slate-500">AI Lead Brief</p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700 dark:text-slate-300">
+              {brief.map((line) => <li key={line}>{line}</li>)}
+            </ul>
+
+            <p className="mt-4 text-xs font-semibold uppercase text-slate-500">Likely Objections + Response Snippets</p>
+            <ul className="mt-2 space-y-2 text-sm">
+              {objections.map((item) => (
+                <li key={item.objection} className="rounded-lg border border-slate-200 p-2 dark:border-slate-700">
+                  <p><strong>Objection:</strong> {item.objection}</p>
+                  <p className="text-slate-700 dark:text-slate-300"><strong>Response:</strong> {item.response}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </section>
 
