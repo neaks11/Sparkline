@@ -39,6 +39,13 @@ export default function ActivitiesPage() {
 
       <div className="card p-4">
         <ul className="space-y-2 text-sm">
+          {filtered.length === 0 && (
+            <li className="py-10 text-center text-slate-400">
+              {activities.length === 0
+                ? 'No activities yet — generate leads and interact with them to see the timeline here.'
+                : 'No activities match your search.'}
+            </li>
+          )}
           {filtered.map((activity) => (
             <li key={activity.id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
               <div className="flex items-center justify-between gap-3">

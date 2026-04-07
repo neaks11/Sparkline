@@ -60,6 +60,15 @@ export default function AccountsPage() {
               </tr>
             </thead>
             <tbody>
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
+                    {accounts.length === 0
+                      ? 'No accounts yet — generate leads on the dashboard to populate this list.'
+                      : 'No accounts match your search.'}
+                  </td>
+                </tr>
+              )}
               {filtered.map((account) => (
                 <tr key={account.id} className="border-t border-slate-200 dark:border-slate-800">
                   <td className="px-4 py-3">

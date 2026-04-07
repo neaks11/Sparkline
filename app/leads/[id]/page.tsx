@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { OutreachEditor } from '@/components/outreach-editor';
 import { SparklineLogo } from '@/components/sparkline-logo';
 import { exportLeadOutreach } from '@/lib/export';
+import { GhlPushButton } from '@/components/ghl-push-button';
 import { buildNurtureSequence } from '@/lib/nurture-sequence';
 import { buildOutreach } from '@/lib/outreach-generator';
 import { loadLeadById, loadLeads, saveLeads } from '@/lib/storage';
@@ -34,7 +35,7 @@ export default function LeadDetailPage() {
   useEffect(() => {
     if (!lead) return;
     const timeout = window.setTimeout(() => {
-      if (notesDraft !== lead.notes) {
+      if (notesDraft.trim() !== lead.notes.trim()) {
         updateLead({ ...lead, notes: notesDraft });
       }
     }, 500);
@@ -121,6 +122,8 @@ export default function LeadDetailPage() {
           <button className="btn-secondary" onClick={() => exportLeadOutreach(lead, 'txt')}>Export TXT</button>
           <button className="btn-secondary" onClick={() => exportLeadOutreach(lead, 'json')}>Export JSON</button>
           <button className="btn-secondary print:hidden" onClick={() => window.print()}>Print</button>
+          <GhlPushButton lead={lead} onPushed={(id) => updateLead({ ...lead, notes: lead.notes + `
+GHL Contact ID: ${id}` })} />
           <button className="btn-primary disabled:cursor-not-allowed disabled:opacity-60" disabled={lead.status === 'Contacted'} onClick={markContacted}>
             {lead.status === 'Contacted' ? 'Already Contacted' : 'Mark Contacted'}
           </button>
@@ -134,7 +137,17 @@ export default function LeadDetailPage() {
             <p className="text-sm text-slate-600 dark:text-slate-300">{lead.contactName} · {lead.contactTitle}</p>
           </div>
           <div className="flex gap-2">
-            <span className="rounded-full bg-brand-100 px-3 py-1 text-xs font-semibold text-brand-900 dark:bg-brand-500/20 dark:text-brand-50">Score {lead.leadScore}</span>
+            <div className="flex items-center gap-2">
+              <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white ${lead.leadScore >= 90 ? 'bg-emerald-500' : lead.leadScore >= 80 ? 'bg-brand-500' : lead.leadScore >= 70 ? 'bg-amber-500' : 'bg-slate-400'}`}>
+                {lead.leadScore}
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-500">Lead Score</p>
+                <div className="mt-0.5 flex h-1.5 w-24 rounded-full bg-slate-200 dark:bg-slate-700">
+                  <div className={`h-1.5 rounded-full ${lead.leadScore >= 90 ? 'bg-emerald-500' : lead.leadScore >= 80 ? 'bg-brand-500' : 'bg-amber-500'}`} style={{ width: `${lead.leadScore}%` }} />
+                </div>
+              </div>
+            </div>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{lead.status}</span>
             <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">Best first touch: {lead.outreach.bestFirstTouch}</span>
           </div>
@@ -142,7 +155,15 @@ export default function LeadDetailPage() {
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <div className="space-y-2 text-sm">
-            <p><strong>Email:</strong> {lead.email}</p>
+            <div className="flex items-center gap-2">
+              <strong>Email:</strong>
+              <span>{lead.email || <span className="text-slate-400 italic">not available</span>}</span>
+              {lead.email && (
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${/^[^@]+@[^@]+\.[^@]+$/.test(lead.email) ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300'}`}>
+                  {/^[^@]+@[^@]+\.[^@]+$/.test(lead.email) ? '✓ Valid format' : '⚠ Check email'}
+                </span>
+              )}
+            </div>
             <p><strong>Phone:</strong> {lead.phone}</p>
             <p><strong>Website:</strong> <a className="text-brand-600" href={lead.website} target="_blank" rel="noreferrer">{lead.website}</a></p>
             <p><strong>LinkedIn:</strong> <a className="text-brand-600" href={lead.linkedinUrl} target="_blank" rel="noreferrer">Profile</a></p>
@@ -159,7 +180,7 @@ export default function LeadDetailPage() {
             <div className="pt-2">
               <label className="mb-1 block text-xs font-semibold uppercase text-slate-500">Source</label>
               <select className="field" onChange={(event) => updateLead({ ...lead, source: event.target.value as Lead['source'] })} value={lead.source}>
-                {(['Generated', 'Manual', 'CSV Import', 'LinkedIn', 'Referral'] as Lead['source'][]).map((source) => (
+                {(['Generated', 'Apollo', 'Manual', 'CSV Import', 'LinkedIn', 'Referral'] as Lead['source'][]).map((source) => (
                   <option key={source} value={source}>{source}</option>
                 ))}
               </select>
@@ -191,14 +212,26 @@ export default function LeadDetailPage() {
           </ul>
         </div>
 
+        {lead.scoreFactors && lead.scoreFactors.length > 0 && (
+          <div className="mt-5">
+            <h2 className="font-semibold">Score Breakdown</h2>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {lead.scoreFactors.map((factor) => (
+                <span key={factor} className="rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 dark:border-brand-700/30 dark:bg-brand-900/20 dark:text-brand-300">
+                  + {factor}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="mt-5">
           <h2 className="font-semibold">Notes</h2>
-          <div
-            className="field mt-2 min-h-24"
-            contentEditable
-            onInput={(event) => setNotesDraft((event.target as HTMLDivElement).innerHTML)}
-            suppressContentEditableWarning
-            dangerouslySetInnerHTML={{ __html: notesDraft }}
+          <textarea
+            className="field mt-2 min-h-[96px] resize-y"
+            value={notesDraft}
+            onChange={(event) => setNotesDraft(event.target.value)}
+            placeholder="Add notes about this lead, conversation history, next steps..."
           />
         </div>
 

@@ -12,11 +12,7 @@ function readJson<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
   const raw = window.localStorage.getItem(key);
   if (!raw) return fallback;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
+  try { return JSON.parse(raw) as T; } catch { return fallback; }
 }
 
 export function saveLeads(leads: Lead[]): void {
@@ -34,7 +30,9 @@ export function loadLeads(): Lead[] {
   const leads = readJson<Lead[]>(STORAGE_KEY, []);
   return leads.map((lead) => ({
     ...lead,
-    scoreFactors: lead.scoreFactors ?? ['No factors yet'],
+    apolloId: lead.apolloId ?? null,
+    batchId: lead.batchId ?? 'legacy',
+    scoreFactors: lead.scoreFactors ?? [],
     source: lead.source ?? 'Generated',
     followUpDate: lead.followUpDate ?? null,
     createdAt: lead.createdAt ?? new Date().toISOString(),
@@ -84,14 +82,17 @@ export function loadProfile(): UserProfile | null {
 export interface SearchSession {
   id: string;
   createdAt: string;
+  source?: 'apollo' | 'mock';
   input: {
     niche: string;
     city: string;
     state: string;
     purpose: string;
-    tone: 'Direct' | 'Friendly' | 'Formal';
+    tone?: 'Direct' | 'Friendly' | 'Formal';
+    count?: number;
   };
   duplicateCount?: number;
+  leadCount?: number;
 }
 
 export function loadSessions(): SearchSession[] {
@@ -109,9 +110,7 @@ export function appendSession(session: SearchSession): SearchSession[] {
   return next;
 }
 
-export interface MonthlyGoal {
-  monthly: number;
-}
+export interface MonthlyGoal { monthly: number; }
 
 export function loadGoal(): MonthlyGoal {
   return readJson<MonthlyGoal>(GOAL_KEY, { monthly: 25 });
@@ -124,33 +123,23 @@ export function saveGoal(goal: MonthlyGoal): void {
 
 export function exportBackup(): void {
   if (typeof window === 'undefined') return;
-  const payload = {
-    leads: loadLeads(),
-    sessions: loadSessions(),
-  };
+  const payload = { leads: loadLeads(), sessions: loadSessions() };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = `sparkline-backup-${Date.now()}.json`;
-  anchor.click();
+  const a = document.createElement('a');
+  a.href = url; a.download = `sparkline-backup-${Date.now()}.json`; a.click();
   URL.revokeObjectURL(url);
 }
 
 export function importBackup(data: { leads?: Lead[]; sessions?: SearchSession[] }): void {
-  const existingLeads = loadLeads();
-  const incomingLeads = data.leads ?? [];
-  const dedupedLeads = [...existingLeads, ...incomingLeads.filter((lead) => !existingLeads.find((existing) => existing.id === lead.id))];
-  saveLeads(dedupedLeads);
-
+  const existing = loadLeads();
+  const incoming = data.leads ?? [];
+  const deduped = [...existing, ...incoming.filter((l) => !existing.find((e) => e.id === l.id))];
+  saveLeads(deduped);
   if (data.sessions) {
-    const existingSessions = loadSessions();
-    const dedupedSessions = [...existingSessions];
-    data.sessions.forEach((session) => {
-      if (!dedupedSessions.find((existing) => existing.id === session.id)) {
-        dedupedSessions.push(session);
-      }
-    });
-    saveSessions(dedupedSessions.slice(-100).reverse());
+    const ex = loadSessions();
+    const merged = [...ex];
+    data.sessions.forEach((s) => { if (!merged.find((e) => e.id === s.id)) merged.push(s); });
+    saveSessions(merged.slice(-100).reverse());
   }
 }

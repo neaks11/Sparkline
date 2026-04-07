@@ -1,6 +1,8 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { AppNav } from '@/components/app-nav';
+import { ChatAssistantWrapper } from '@/components/chat-assistant-wrapper';
+import { ToastRenderer } from '@/components/toast';
 
 export const metadata: Metadata = {
   title: 'Sparkline | Lead Generation MVP',
@@ -38,6 +40,10 @@ export default function RootLayout({
           </div>
           <div className="min-w-0">{children}</div>
         </div>
+        {/* Global AI chat assistant — available on every page */}
+        <ChatAssistantWrapper />
+        {/* Global toast notifications */}
+        <ToastRenderer />
       </body>
     </html>
   );

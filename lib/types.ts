@@ -16,7 +16,9 @@ export interface ActivityItem {
 
 export interface Lead {
   id: string;
-  batchId?: string;
+  apolloId: string | null;
+  batchId: string;
+  createdAt: string;
   businessName: string;
   contactName: string;
   contactTitle: string;
@@ -31,11 +33,10 @@ export interface Lead {
   painPoints: string[];
   personalizationHook: string;
   leadScore: number;
-  scoreFactors: string[];
+  scoreFactors?: string[];
   status: LeadStatus;
-  source: 'Generated' | 'Manual' | 'CSV Import' | 'LinkedIn' | 'Referral';
-  followUpDate: string | null;
-  createdAt: string;
+  source?: 'Generated' | 'Apollo' | 'Manual' | 'CSV Import' | 'LinkedIn' | 'Referral';
+  followUpDate?: string | null;
   notes: string;
   outreach: OutreachBundle;
   activity: ActivityItem[];
@@ -46,7 +47,8 @@ export interface LeadSearchInput {
   city: string;
   state: string;
   purpose: string;
-  tone: 'Direct' | 'Friendly' | 'Formal';
+  count: number;
+  tone?: 'Direct' | 'Friendly' | 'Formal';
 }
 
 export interface Account {
@@ -95,7 +97,15 @@ export interface UserProfile {
   fullName: string;
   email: string;
   companyName: string;
+  role: string;
   productService: string;
-  outreachGoal: string;
+  elevatorPitch: string;
+  targetNiches: string[];
+  targetCities: Array<{ city: string; state: string }>;
+  defaultTone: 'Direct' | 'Friendly' | 'Formal';
+  monthlyLeadGoal: number;
   timezone: string;
+  avatarColor: string;
+  createdAt: string;
+  updatedAt: string;
 }

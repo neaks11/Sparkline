@@ -26,8 +26,9 @@ export function parseLeadsCsv(csv: string): Lead[] {
     const niche = row[idx('niche')] || 'General';
     const status = (row[idx('status')] as LeadStatus) || 'New';
 
-    return {
+    const lead: Lead = {
       id: `import-${Date.now()}-${index + 1}`,
+      apolloId: null,
       batchId,
       businessName,
       contactName,
@@ -57,6 +58,7 @@ export function parseLeadsCsv(csv: string): Lead[] {
         bestFirstTouch: 'Email',
       },
       activity: [{ id: crypto.randomUUID(), label: 'Imported from CSV', timestamp: now }],
-    } as Lead;
+    };
+    return lead;
   });
 }
