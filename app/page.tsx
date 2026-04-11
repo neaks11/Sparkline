@@ -63,8 +63,8 @@ export default function HomePage() {
   const [duplicateWarning, setDuplicateWarning] = useState('');
   const [lastSource, setLastSource] = useState<'apollo' | 'mock' | null>(null);
   const [apolloPlanRequired, setApolloPlanRequired] = useState(false);
-  const [sessions, setSessions] = useState(loadSessions());
-  const [goal, setGoal] = useState(loadGoal().monthly);
+  const [sessions, setSessions] = useState<ReturnType<typeof loadSessions>>([]);
+  const [goal, setGoal] = useState(25);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const backupInputRef = useRef<HTMLInputElement>(null);
@@ -72,6 +72,7 @@ export default function HomePage() {
   useEffect(() => {
     setLeads(loadLeads());
     setSessions(loadSessions());
+    setGoal(loadGoal().monthly);
     setProfile(loadProfile());
     // Pick up any pending search fired from chat assistant on another page
     const pending = sessionStorage.getItem('sparkline_pending_search');
