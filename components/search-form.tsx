@@ -1,7 +1,7 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
-import { NICHE_OPTIONS } from '@/lib/niches';
+import { FormEvent, useMemo, useState } from 'react';
+import { getNichesForIndustry, INDUSTRY_OPTIONS, NICHE_OPTIONS, NicheIndustry } from '@/lib/niches';
 import { LeadSearchInput } from '@/lib/types';
 
 interface SearchFormProps {
@@ -12,7 +12,10 @@ interface SearchFormProps {
 }
 
 export function SearchForm({ onGenerate, loading, onRerunLast, hasLastSearch = false }: SearchFormProps) {
+  const [industry, setIndustry] = useState<NicheIndustry | ''>('');
   const [form, setForm] = useState<LeadSearchInput>({ niche: '', city: '', state: '', purpose: '', tone: 'Friendly' });
+
+  const availableNiches = useMemo(() => getNichesForIndustry(industry), [industry]);
   const normalizedNiche = form.niche.trim().toLowerCase();
   const hasValidNiche = NICHE_OPTIONS.some((niche) => niche.toLowerCase() === normalizedNiche);
   const hasRequiredFields = Boolean(hasValidNiche && form.city.trim() && form.state.trim() && form.purpose.trim());
@@ -29,20 +32,43 @@ export function SearchForm({ onGenerate, loading, onRerunLast, hasLastSearch = f
     });
   };
 
+  const resetNicheSelection = () => {
+    setIndustry('');
+    setForm((prev) => ({ ...prev, niche: '' }));
+  };
+
   return (
     <form onSubmit={submit} className="card grid gap-4 p-6 lg:grid-cols-2">
       <div>
-        <label className="mb-1 block text-sm font-medium">Niche / Business Type</label>
-        <input className="field" list="sparkline-niches" placeholder="Search and select a niche" value={form.niche} onChange={(e) => setForm((prev) => ({ ...prev, niche: e.target.value }))} />
-        <datalist id="sparkline-niches">
-          {NICHE_OPTIONS.map((niche) => (
-            <option key={niche} value={niche} />
+        <label className="mb-1 block text-sm font-medium">Industry (Layer 1)</label>
+        <select className="field" onChange={(e) => {
+          const nextIndustry = e.target.value as NicheIndustry | '';
+          setIndustry(nextIndustry);
+          setForm((prev) => ({ ...prev, niche: '' }));
+        }} value={industry}>
+          <option value="">Select industry</option>
+          {INDUSTRY_OPTIONS.map((option) => (
+            <option key={option} value={option}>{option}</option>
           ))}
-        </datalist>
+        </select>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium">Business Niche (Layer 2)</label>
+        <div className="flex gap-2">
+          <select className="field" disabled={!industry} onChange={(e) => setForm((prev) => ({ ...prev, niche: e.target.value }))} value={form.niche}>
+            <option value="">{industry ? 'Select business niche' : 'Choose industry first'}</option>
+            {availableNiches.map((niche) => (
+              <option key={niche} value={niche}>{niche}</option>
+            ))}
+          </select>
+          <button className="btn-secondary" onClick={resetNicheSelection} type="button">Reset</button>
+        </div>
         {!hasValidNiche && form.niche.trim().length > 0 && (
-          <p className="mt-1 text-xs text-amber-600 dark:text-amber-300">Choose one of the 10 standard niches from the list.</p>
+          <p className="mt-1 text-xs text-amber-600 dark:text-amber-300">Choose a valid niche from Layer 2 after selecting an industry.</p>
         )}
       </div>
+
       <div>
         <label className="mb-1 block text-sm font-medium">City</label>
         <input className="field" placeholder="e.g. Chicago" value={form.city} onChange={(e) => setForm((prev) => ({ ...prev, city: e.target.value }))} />
@@ -73,7 +99,7 @@ export function SearchForm({ onGenerate, loading, onRerunLast, hasLastSearch = f
           )}
         </div>
         {!hasRequiredFields && (
-          <p className="mt-2 text-xs text-slate-500">All 4 fields are required, and niche must be selected from the standard list.</p>
+          <p className="mt-2 text-xs text-slate-500">Industry + business niche + city + state + purpose are required to generate leads.</p>
         )}
       </div>
     </form>

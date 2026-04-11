@@ -39,6 +39,7 @@ export default function HomePage() {
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 300);
   const [sortDirection, setSortDirection] = useState<'desc' | 'asc'>('desc');
+  const [sortField, setSortField] = useState<'leadScore' | 'businessName' | 'createdAt'>('leadScore');
   const [statusFilter, setStatusFilter] = useState<(typeof statuses)[number]>('All');
   const [sourceFilter, setSourceFilter] = useState<(typeof sourceOptions)[number]>('All');
   const [minScore, setMinScore] = useState(65);
@@ -88,8 +89,19 @@ export default function HomePage() {
       const matchesSource = sourceFilter === 'All' || lead.source === sourceFilter;
       return matchesQuery && matchesScore && matchesStatus && matchesSource;
     });
-    return result.sort((a, b) => sortDirection === 'desc' ? b.leadScore - a.leadScore : a.leadScore - b.leadScore);
-  }, [debouncedQuery, leads, minScore, sortDirection, sourceFilter, statusFilter]);
+    return result.sort((a, b) => {
+      if (sortField === 'businessName') {
+        const compare = a.businessName.localeCompare(b.businessName);
+        return sortDirection === 'desc' ? -compare : compare;
+      }
+      if (sortField === 'createdAt') {
+        const compare = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        return sortDirection === 'desc' ? -compare : compare;
+      }
+      const compare = a.leadScore - b.leadScore;
+      return sortDirection === 'desc' ? -compare : compare;
+    });
+  }, [debouncedQuery, leads, minScore, sortDirection, sortField, sourceFilter, statusFilter]);
 
   const persist = (next: Lead[]) => {
     const enriched = enrichLeads(next);
@@ -233,7 +245,12 @@ export default function HomePage() {
               {sourceOptions.map((source) => <option key={source} value={source}>{source}</option>)}
             </select>
             <input className="field max-w-[130px]" max={99} min={65} onChange={(e) => setMinScore(Math.max(65, Math.min(99, Number(e.target.value) || 65)))} type="number" value={minScore} />
-            <button className="btn-secondary" onClick={() => setSortDirection((prev) => prev === 'desc' ? 'asc' : 'desc')}>Sort Score: {sortDirection === 'desc' ? 'High→Low' : 'Low→High'}</button>
+            <select className="field max-w-[180px]" onChange={(e) => setSortField(e.target.value as 'leadScore' | 'businessName' | 'createdAt')} value={sortField}>
+              <option value="leadScore">Sort by: Score</option>
+              <option value="businessName">Sort by: Business Name</option>
+              <option value="createdAt">Sort by: Date Created</option>
+            </select>
+            <button className="btn-secondary" onClick={() => setSortDirection((prev) => prev === 'desc' ? 'asc' : 'desc')}>Sort Direction: {sortDirection === 'desc' ? 'Desc' : 'Asc'}</button>
             <button className="btn-secondary" onClick={() => { setQuery(''); setStatusFilter('All'); setSourceFilter('All'); setMinScore(65); }}>Clear Filters</button>
             <button className={`btn-secondary ${view === 'table' ? '!border-brand-500 !text-brand-600' : ''}`} onClick={() => setView('table')}>Table</button>
             <button className={`btn-secondary ${view === 'kanban' ? '!border-brand-500 !text-brand-600' : ''}`} onClick={() => setView('kanban')}>Kanban</button>
