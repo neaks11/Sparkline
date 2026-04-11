@@ -5,6 +5,7 @@ interface PipelineChartProps {
 }
 
 const colorMap: Record<LeadStatus, string> = {
+  // SMB pipeline
   New: 'bg-slate-500',
   Ready: 'bg-brand-500',
   Contacted: 'bg-sky-500',
@@ -12,6 +13,12 @@ const colorMap: Record<LeadStatus, string> = {
   'Proposal Sent': 'bg-amber-500',
   Won: 'bg-emerald-500',
   Lost: 'bg-rose-500',
+  // Senior Living / Referral pipeline
+  'Relationship Building': 'bg-sky-400',
+  'Partner Qualified': 'bg-purple-400',
+  'Partner Established': 'bg-amber-400',
+  'Active Referrals': 'bg-teal-500',
+  Dormant: 'bg-slate-300',
 };
 
 export function PipelineChart({ counts }: PipelineChartProps) {

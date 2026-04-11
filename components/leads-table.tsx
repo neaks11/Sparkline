@@ -13,9 +13,14 @@ interface LeadsTableProps {
   onBulkExport: (ids: string[]) => void;
 }
 
-const statusOptions: LeadStatus[] = ['New', 'Ready', 'Contacted', 'Qualified', 'Proposal Sent', 'Won', 'Lost'];
+const statusOptions: LeadStatus[] = [
+  // SMB
+  'New', 'Ready', 'Contacted', 'Qualified', 'Proposal Sent', 'Won', 'Lost',
+  // Senior Living / Referral
+  'Relationship Building', 'Partner Qualified', 'Partner Established', 'Active Referrals', 'Dormant',
+];
 const sourceOptions: Lead['source'][] = ['Generated', 'Manual', 'CSV Import', 'LinkedIn', 'Referral'];
-const defaultColumns = ['Business Name', 'Contact', 'City', 'Lead Score', 'Follow-up', 'Source', 'Status', 'Actions'];
+const defaultColumns = ['Business Name', 'Contact', 'City', 'Lead Score', 'Type', 'Follow-up', 'Source', 'Status', 'Actions'];
 
 function isStale(lead: Lead): boolean {
   if (lead.status === 'Won' || lead.status === 'Lost') return false;
@@ -78,11 +83,26 @@ export function LeadsTable({ leads, loading = false, onUpdateLead, onBulkDelete,
   const statusClass = (status: LeadStatus): string => {
     if (status === 'Won') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300';
     if (status === 'Lost') return 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300';
-    if (status === 'Qualified') return 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300';
-    if (status === 'Proposal Sent') return 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300';
-    if (status === 'Contacted') return 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300';
+    if (status === 'Qualified' || status === 'Partner Qualified') return 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300';
+    if (status === 'Proposal Sent' || status === 'Partner Established') return 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300';
+    if (status === 'Contacted' || status === 'Relationship Building') return 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300';
+    if (status === 'Active Referrals') return 'bg-teal-100 text-teal-700 dark:bg-teal-500/20 dark:text-teal-300';
+    if (status === 'Dormant') return 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400';
     if (status === 'Ready') return 'bg-brand-100 text-brand-900 dark:bg-brand-500/20 dark:text-brand-100';
     return 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-200';
+  };
+
+  const leadTypeLabel = (lead: Lead): string => {
+    if (!lead.leadType || lead.leadType === 'Standard') return '';
+    const icons: Record<string, string> = {
+      'Medical Facility': '🏥',
+      'Professional Influencer': '⚖️',
+      'Referral Partner': '🤝',
+      'Community Organization': '⛪',
+      'Senior Living Community': '🏡',
+      'Family Decision Support': '👨‍👩‍👧',
+    };
+    return `${icons[lead.leadType] ?? '•'} ${lead.leadType}`;
   };
 
   const copyEmail = async (email: string, businessName: string) => {
@@ -188,6 +208,14 @@ export function LeadsTable({ leads, loading = false, onUpdateLead, onBulkDelete,
                       </details>
                     </td>
                   )}
+                  {visibleColumns.includes('Type') && (
+                    <td className="px-4 py-3 text-xs">
+                      {leadTypeLabel(lead) || <span className="text-slate-400">—</span>}
+                      {lead.referralInfluenceScore ? (
+                        <p className="mt-0.5 text-slate-400">Influence: {lead.referralInfluenceScore}</p>
+                      ) : null}
+                    </td>
+                  )}
                   {visibleColumns.includes('Follow-up') && <td className="px-4 py-3">{lead.followUpDate ? new Date(lead.followUpDate).toLocaleDateString() : '—'}</td>}
                   {visibleColumns.includes('Source') && (
                     <td className="px-4 py-3">
@@ -231,8 +259,13 @@ export function LeadsTable({ leads, loading = false, onUpdateLead, onBulkDelete,
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-medium">{selectedIds.size} selected</p>
             <div className="flex flex-wrap gap-2">
-              <select className="field max-w-[160px]" onChange={(event) => setBulkStatus(event.target.value as LeadStatus)} value={bulkStatus}>
-                {statusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
+              <select className="field max-w-[200px]" onChange={(event) => setBulkStatus(event.target.value as LeadStatus)} value={bulkStatus}>
+                <optgroup label="SMB Pipeline">
+                  {(['New','Ready','Contacted','Qualified','Proposal Sent','Won','Lost'] as LeadStatus[]).map((s) => <option key={s} value={s}>{s}</option>)}
+                </optgroup>
+                <optgroup label="Senior Living / Referral">
+                  {(['Relationship Building','Partner Qualified','Partner Established','Active Referrals','Dormant'] as LeadStatus[]).map((s) => <option key={s} value={s}>{s}</option>)}
+                </optgroup>
               </select>
               <button className="btn-secondary" onClick={() => onBulkUpdate(Array.from(selectedIds), bulkStatus)}>Bulk Update Status</button>
               <button className="btn-secondary" onClick={() => onBulkExport(Array.from(selectedIds))}>Bulk Export CSV</button>

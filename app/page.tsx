@@ -23,7 +23,14 @@ import { toast } from '@/components/toast';
 import { QuickAddLeadModal } from '@/components/quick-add-lead-modal';
 
 const statuses: Array<LeadStatus | 'All' | 'Due Today' | 'Stale (14+ days)'> = [
-  'All', 'New', 'Ready', 'Contacted', 'Qualified', 'Proposal Sent', 'Won', 'Lost', 'Due Today', 'Stale (14+ days)',
+  // Core
+  'All',
+  // SMB pipeline
+  'New', 'Ready', 'Contacted', 'Qualified', 'Proposal Sent', 'Won', 'Lost',
+  // Senior Living / Referral pipeline
+  'Relationship Building', 'Partner Qualified', 'Partner Established', 'Active Referrals', 'Dormant',
+  // Smart filters
+  'Due Today', 'Stale (14+ days)',
 ];
 const sourceOptions: Array<Lead['source'] | 'All'> = [
   'All', 'Generated', 'Manual', 'CSV Import', 'LinkedIn', 'Referral',
@@ -105,6 +112,7 @@ export default function HomePage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pipelineCounts = useMemo<Record<LeadStatus, number>>(() => ({
+    // SMB
     New: leads.filter((l) => l.status === 'New').length,
     Ready: leads.filter((l) => l.status === 'Ready').length,
     Contacted: leads.filter((l) => l.status === 'Contacted').length,
@@ -112,6 +120,12 @@ export default function HomePage() {
     'Proposal Sent': leads.filter((l) => l.status === 'Proposal Sent').length,
     Won: leads.filter((l) => l.status === 'Won').length,
     Lost: leads.filter((l) => l.status === 'Lost').length,
+    // Senior Living / Referral
+    'Relationship Building': leads.filter((l) => l.status === 'Relationship Building').length,
+    'Partner Qualified': leads.filter((l) => l.status === 'Partner Qualified').length,
+    'Partner Established': leads.filter((l) => l.status === 'Partner Established').length,
+    'Active Referrals': leads.filter((l) => l.status === 'Active Referrals').length,
+    Dormant: leads.filter((l) => l.status === 'Dormant').length,
   }), [leads]);
 
   const filtered = useMemo(() => {
@@ -207,9 +221,12 @@ export default function HomePage() {
   const goalProgress = Math.min(100, Math.round((thisMonthContacted / Math.max(goal, 1)) * 100));
 
   const grouped = useMemo(() => {
-    return (['New', 'Ready', 'Contacted', 'Qualified', 'Proposal Sent', 'Won', 'Lost'] as LeadStatus[]).map(
-      (status) => ({ status, leads: filtered.filter((l) => l.status === status) })
-    );
+    return ([
+      'New', 'Ready', 'Contacted', 'Qualified', 'Proposal Sent', 'Won', 'Lost',
+      'Relationship Building', 'Partner Qualified', 'Partner Established', 'Active Referrals', 'Dormant',
+    ] as LeadStatus[])
+      .map((status) => ({ status, leads: filtered.filter((l) => l.status === status) }))
+      .filter((lane) => lane.leads.length > 0); // hide empty lanes in kanban
   }, [filtered]);
 
   const batchStats = useMemo(() => {
